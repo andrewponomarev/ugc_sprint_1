@@ -1,0 +1,85 @@
+@startuml
+actor Клиент as client
+actor "Контент менеджер" as content_manager
+actor Администратор as admin
+
+package "Front-end" {
+    node "Admin Panel: Front" {
+        component nginx as admin_nginx #LightBlue
+        component Django as admin_engine #GreenYellow
+
+        admin_nginx --> admin_engine : "HTTP запросы"
+    }
+}
+
+package "Back-end" {
+    node "Async API" {
+        component nginx as async_nginx #LightBlue
+        component FastAPI as async_engine #LightGreen
+        database ElasticSearch as async_db #Salmon
+        database Redis as async_cache #Salmon
+
+        async_nginx --> async_engine : "HTTP запросы"
+        async_engine --> async_cache : "Кэширование запросов"
+        async_engine --> async_db : "Поиск данных"
+    }
+
+    node "Admin Panel: Back" {
+        component Django as admin_engine_back #LightGreen
+        database Postgres as admin_db #Salmon
+
+        admin_engine --> admin_engine_back : "Внутренние запросы"
+        admin_engine_back --> admin_db : "CRUD операции"
+    }
+
+    node "ETL: Content Transfer" {
+        component "ETL service" as etl_content_transfer #Gold
+    }
+
+    node "UGC Service" {
+        component nginx as ugc_nginx #LightBlue
+        component "UGC API" as ugc_api #LightGreen
+        database "Redis" as ugc_cache #Salmon
+
+        ugc_nginx --> ugc_api : "HTTP запросы"
+        ugc_api --> ugc_cache : "Кэширование запросов"
+    }
+
+    queue "Kafka" as kafka #Orange
+
+    node "ClickHouse" {
+        database "ClickHouse DB" as clickhouse_db #Salmon
+    }
+
+    node "ETL: UGC Transfer" {
+        component "ETL UGC service" as etl_ugc_transfer #Gold
+    }
+
+    node "Auth API" {
+        component nginx as auth_nginx #LightBlue
+        component FastAPI as auth_engine #LightGreen
+        database Postgres as auth_db #Salmon
+        database Redis as auth_cache #Salmon
+
+        auth_nginx --> auth_engine : "HTTP запросы"
+        auth_engine --> auth_db : "CRUD операции"
+        auth_engine --> auth_cache : "Кэширование запросов"
+    }
+}
+
+client ..> auth_nginx : "Аутентификация"
+client --> async_nginx : "Асинхронные запросы"
+admin --> auth_nginx : "Аутентификация"
+content_manager --> admin_nginx : "Управление контентом"
+
+client --> ugc_nginx: "Загрузка UGC"
+ugc_api --> kafka : "Отправка событий"
+
+kafka --> etl_ugc_transfer : "Потребление сообщений UGC"
+etl_ugc_transfer --> clickhouse_db : "Загрузка UGC в ClickHouse"
+
+etl_content_transfer -up-> admin_db : "Extract from"
+etl_content_transfer -down-> async_db : "Load to"
+
+skinparam componentStyle ellipse
+@enduml
