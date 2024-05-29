@@ -1,0 +1,25 @@
+@startuml
+==Create and send clicks record==
+
+Client -> UGC: Post /clicks
+
+activate UGC
+UGC -> Kafka:  Save to topic `clicks`\npartition user_id+html_element_id
+
+activate Kafka
+Etl --> Kafka: Init Consumer for ClickHouse
+Kafka -> Etl: Send data to Etl
+deactivate Kafka
+
+activate Etl
+
+
+==Load data to ClickHouse==
+
+Etl -> ClickHouse: Load data to storage
+activate ClickHouse
+deactivate ClickHouse
+
+deactivate Etl
+
+@enduml
