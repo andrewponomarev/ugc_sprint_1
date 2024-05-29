@@ -39,10 +39,8 @@ package "Back-end" {
     node "UGC Service" {
         component nginx as ugc_nginx #LightBlue
         component "UGC API" as ugc_api #LightGreen
-        database "Redis" as ugc_cache #Salmon
 
         ugc_nginx --> ugc_api : "HTTP запросы"
-        ugc_api --> ugc_cache : "Кэширование запросов"
     }
 
     queue "Kafka" as kafka #Orange
